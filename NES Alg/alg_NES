@@ -1,0 +1,7 @@
+
+VIRUS_LEVEL = 20 
+REM_VIRUSES = (VIRUS_LEVEL + 1) * 4 
+
+bottle_start = 16
+bottle = []
+
