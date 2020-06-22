@@ -29,13 +29,18 @@ typedef enum {
 
 // Size: 1
 typedef enum {
-	VIRUS_RED,
-	VIRUS_YELLOW,
-	VIRUS_BLUE,
-	NUMVIRUSTYPES
+	VIRUS_RED, // 0 
+	VIRUS_YELLOW, // 1 
+	VIRUS_BLUE, // 2 
+	NUMVIRUSTYPES  // 3  
 } VirusType;
 
+//translate CELL_REDVIRUS to VIRUS_RED, etc. 
 #define CELLVIRUSTYPE(cell) ((VirusType)((cell & 3) - 1))
+//  101011xy
+//& 00000011
+//------------
+//  000000xy
 
 // Size: 1
 typedef enum {
@@ -54,6 +59,7 @@ typedef enum {
 uint8_t Temp[2];
 
 // Offset: 0x828234
+// Max row for given level
 uint8_t RandDivisors[MAXVIRUSLEVEL + 1] = {
 	// 0 ... 14
 	10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
@@ -66,6 +72,7 @@ uint8_t RandDivisors[MAXVIRUSLEVEL + 1] = {
 };
 
 // Offset: 0x828252
+// Where to put the next virus, all positions in memory where a virus can be stored 
 size_t NextVirusPosTable[(BOTTLE_WIDTH - 2) * TOPVIRUSROW] = {
 	0x101, 0x102, 0x103, 0x104, 0x105, 0x106, 0x107, 0x108,
 	 0xF1,  0xF2,  0xF3,  0xF4,  0xF5,  0xF6,  0xF7,  0xF8,
@@ -126,6 +133,7 @@ Player Players[NUMPLAYERS];
 // Offset: 0x009E
 uint16_t Seed;
 
+// Highest number of viruses is 96
 void InitNumGenViruses() {
 	Players[PlayerNum].maxGenViruses = (
 		Players[PlayerNum].virusLevel >= 23 ?
@@ -137,13 +145,14 @@ void InitNumGenViruses() {
 
 // Offset: 0x829765
 void InitGenVirusData() {
+	// number of virus positions 
 	Players[PlayerNum].randDivisor =
 		RandDivisors[
 			Players[PlayerNum].virusLevel >= MAXVIRUSLEVEL ?
 				MAXVIRUSLEVEL :
 				Players[PlayerNum].virusLevel
 		] << 3;
-
+	// go through every possible position of a virus and set it to false 
 	Temp[0] = (BOTTLE_WIDTH - 2) * TOPVIRUSROW;
 	for (size_t i = 0; Temp[0] != 0; i++, Temp[0]--) {
 		Players[PlayerNum].occupiedVirusPosTable[i] = false;
@@ -151,6 +160,7 @@ void InitGenVirusData() {
 }
 
 // Offset: 0x808DBF
+//write python version
 void Rand() {
 	Seed = Seed * UINT16_C(5) + UINT16_C(0x7113);
 }
@@ -159,7 +169,7 @@ void Rand() {
 void SetVirusPos(PlayerIndex playerNum) {
 	Players[playerNum].nextVirusPos = NextVirusPosTable[Players[playerNum].nextVirusPosIndex] + PlayerNum * sizeof(Player);
 }
-
+//Find first unoccupied position 
 // Offset: 0x829BB7
 void SetUnoccupiedVirusPos() {
 	do {

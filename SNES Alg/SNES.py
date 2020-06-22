@@ -14,8 +14,8 @@ class Cell:
         '''
 
 
-bottleWidth = 10,
-bottleHeight = 18,
+bottleWidth = 10
+bottleHeight = 18
 matrixWidth = 16
 
 VirusTypes = ["red","yellow","blue","numtypes"]
