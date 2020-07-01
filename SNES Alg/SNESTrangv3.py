@@ -108,7 +108,6 @@ def InitGenVirusData():
 def Rand():
     global Seed
     Seed = (Seed * 5 + 28947) % 65536
-    Seed2 = (Seed * 5 + 28947) & 0xffff
 
 def SetVirusPos(playerNum):
     #indexed into the possible positions of a virus
@@ -143,20 +142,17 @@ def SetVirus():
     Players[PlayerNum].occupiedVirusPosTable[Players[PlayerNum].nextVirusPosIndex] = True
 
     #consider next virus type in list red, yellow, blue
-    #the very first color considered is red
-    # Players[PlayerNum].nextVirusType+=1
-    # if Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES:
-    #     Players[PlayerNum].nextVirusType = VIRUS_RED
+    #NOTE: the very first color considered is red
     Players[PlayerNum].nextVirusType = (Players[PlayerNum].nextVirusType+1)%NUMVIRUSTYPES
 
 def _checkNeighbor(virusPos):
     #is neighbor outside of bottle?
     beyondEnd = (virusPos >= (BOTTLE_HEIGHT - 1) * BOTTLE_WIDTH)
 
-    #is neighbor a cell wall?
     column = virusPos % 10
 
-    return ( (beyondEnd or column == 0 or column == BOTTLE_WIDTH - 1
+    return ( (beyondEnd or
+    column == 0 or column == BOTTLE_WIDTH - 1 #is neighbor a cell wall?
     or Players[PlayerNum].bottle[virusPos] == CELL_EMPTY
     or CELLVIRUSTYPE(Players[PlayerNum].bottle[virusPos]) != Players[PlayerNum].nextVirusType) )
 
@@ -169,7 +165,6 @@ def ValidVirusPos():
             _checkNeighbor(Players[PlayerNum].nextVirusPos + 2) ) #right
     return valid
 
-#TODO: rewrite
 def GenVirus():
     #can be set to whatever value st >= 13*8
     #(13*8 is the max number of virus for the highest level)
@@ -242,6 +237,10 @@ def main():
     print("Total number of virus is "+ str(total))
 
 if __name__ == "__main__":
+    if sys.argv[:2] != "0x":
+        print("usage: python SNESTrangv3.py <hexSeed>")
+        print("e.g. python SNESTrangv3.py 0x3400")
+        exit()
     s = sys.argv[1][2:]
     Seed = int(s, 16)
     CurrentPlayersMode = PLAYERSMODE_SINGLE
