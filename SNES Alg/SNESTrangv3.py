@@ -26,7 +26,7 @@ NUMVIRUSTYPES = 3
 BOTTLE_WIDTH = 10
 BOTTLE_HEIGHT = 18
 
-MAXVIRUSGENATTEMPTS = 4
+MAXVIRUSGENATTEMPTS = 3
 #highest possible row for viruses for all levels = 13 (lvl 18-29)
 TOPVIRUSROW = 13
 MAXVIRUSLEVEL = 29
@@ -79,7 +79,7 @@ class Player():
         self.nextVirusPos = 0 #use index to index into NextVirusPosTable
         self.nextVirusPosIndex = 0
         self.lastVirusPosIndex = 0
-        self.numVirusGenAttempts = 0 #so far
+        self.numFailedVirusGenAttempts = 0 #so far
 
 PLAYER1 = 0
 PLAYER2 = 1
@@ -144,9 +144,10 @@ def SetVirus():
 
     #consider next virus type in list red, yellow, blue
     #the very first color considered is red
-    Players[PlayerNum].nextVirusType+=1
-    if Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES:
-        Players[PlayerNum].nextVirusType = VIRUS_RED
+    # Players[PlayerNum].nextVirusType+=1
+    # if Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES:
+    #     Players[PlayerNum].nextVirusType = VIRUS_RED
+    Players[PlayerNum].nextVirusType = (Players[PlayerNum].nextVirusType+1)%NUMVIRUSTYPES
 
 def _checkNeighbor(virusPos):
     #is neighbor outside of bottle?
@@ -170,31 +171,30 @@ def ValidVirusPos():
 
 #TODO: rewrite
 def GenVirus():
-    Players[PlayerNum].lastVirusPosIndex = 0xFFFF #whatever
-    Players[PlayerNum].numVirusGenAttempts = 0
+    #can be set to whatever value st >= 13*8
+    #(13*8 is the max number of virus for the highest level)
+    Players[PlayerNum].firstAttemptVirusPosIndex = 0xF
+    Players[PlayerNum].numFailedVirusGenAttempts = 0
     GenNextVirusPosIndex()
     while True:
         SetUnoccupiedVirusPos()
-        if (Players[PlayerNum].nextVirusPosIndex == Players[PlayerNum].lastVirusPosIndex):
-            print("we are actually in the if statement wow!")
-            print("nextvirusposindex IF is "+str(Players[PlayerNum].nextVirusPosIndex))
-            Players[PlayerNum].numVirusGenAttempts+=1
-            if (Players[PlayerNum].numVirusGenAttempts >= MAXVIRUSGENATTEMPTS):
+        #scanned through all empty spots in bottle,
+        #no valid pos for a virus of virusType - must change to another virusType
+        if (Players[PlayerNum].nextVirusPosIndex == Players[PlayerNum].firstAttemptVirusPosIndex):
+            Players[PlayerNum].numFailedVirusGenAttempts+=1
+            #have tried with all 3 virusTypes
+            #stop placing viruses
+            if (Players[PlayerNum].numFailedVirusGenAttempts >= MAXVIRUSGENATTEMPTS):
                 Players[PlayerNum].maxGenViruses = Players[PlayerNum].numGenViruses
                 return None
-            Players[PlayerNum].nextVirusType+=1
-            if Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES:
-                Players[PlayerNum].nextVirusType = VIRUS_RED
+            Players[PlayerNum].nextVirusType=(Players[PlayerNum].nextVirusType+1)%NUMVIRUSTYPES
         else:
-            print("we are in the else part")
-            if (Players[PlayerNum].lastVirusPosIndex == 0xFFFF):
-                Players[PlayerNum].lastVirusPosIndex = Players[PlayerNum].nextVirusPosIndex
-                print("next and last virusposindex ELSE is "+str(Players[PlayerNum].nextVirusPosIndex))
-            print("lastvirusposindex ELSE is "+str(Players[PlayerNum].lastVirusPosIndex))
-            valid = ValidVirusPos()
-            print(valid)
-            if (valid):
-                Players[PlayerNum].numVirusGenAttempts = 0
+            #stored the first position that we tried to place a virus of virusType
+            if (Players[PlayerNum].firstAttemptVirusPosIndex == 0xF):
+                Players[PlayerNum].firstAttemptVirusPosIndex = Players[PlayerNum].nextVirusPosIndex
+            if (ValidVirusPos()):
+                Players[PlayerNum].numFailedVirusGenAttempts = 0
+                #NOTE: SetVirus also changed virusType
                 SetVirus()
                 return None
 
