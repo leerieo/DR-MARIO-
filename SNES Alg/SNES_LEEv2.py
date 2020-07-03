@@ -1,11 +1,9 @@
 #CELL 
-
-CELL_EMPTY = 0x00
-
-CELL_WALL = 0x3A
-CELL_REDVIRUS = 0x81
-CELL_YELLOWVIRUS = 0x82
-CELL_BLUEVIRUS = 0x83
+CELL_EMPTY = "."
+CELL_WALL = "#"
+CELL_REDVIRUS = "R"
+CELL_YELLOWVIRUS = "Y"
+CELL_BLUEVIRUS = "B"
 
 #BOTTLE
 BOTTLE_WIDTH = 10
@@ -26,27 +24,32 @@ PLAYERSMODE_2 = 2
 #PLAYER1 + PLAYER2 
 NUMPLAYERS = 2
 
-#translate CELL_REDVIRUS to VIRUS_RED, etc. 
 def cellVirusType(cell):
-    return (cell & 3) - 1 
+    if cell == CELL_REDVIRUS:
+        return VIRUS_RED
+    if cell == CELL_YELLOWVIRUS:
+        return VIRUS_YELLOW
+    if cell == CELL_BLUEVIRUS:
+        return VIRUS_BLUE
 
 MAXVIRUSGENATTEMPTS = 4
-TOPVIRUSROW = 13
 MAXVIRUSLEVEL = 29
 
 CurrentPlayersMode = PLAYERSMODE_SINGLE
 
-#the highest row with viruses allowed in each level
-levelMaxRow = [
-	# level 0 ... 14
-	10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-	# level 15 ... 16
-	11, 11,
-	# level 17 ... 18
-	12, 12,
-	# level 18 ... 29
-	13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13
-]
+
+def levelMaxRow(level):
+    if level <= 14: 
+        return 10 
+    elif level <= 16: 
+        return 11 
+    elif level <= 18: 
+        return 12
+    else: 
+        return 13 
+
+
+
 
 # Where to put the next virus, all positions in memory where a virus can be stored
 NextVirusPosTable = [
@@ -118,7 +121,7 @@ class Player:
         self.nextVirusType = 0 #integer, 0 (red), 1(yellow) or 2(blue)
         #if all rows are filled w viruses
         self.maxVirusLocs = 0 #max number of allowed virus given a level
-        self.occupiedVirusPosTable = [False] * ((BOTTLE_WIDTH - 2) * TOPVIRUSROW) #bool list
+        #self.occupiedVirusPosTable = [False] * ((BOTTLE_WIDTH - 2) * TOPVIRUSROW) #bool list
         self.numGenViruses = 0 #number of generated virus so far
         self.maxGenViruses = 0
         self.nextVirusPos = 0
@@ -126,13 +129,13 @@ class Player:
         self.lastVirusPosIndex = 0
         self.numVirusGenAttempts = 0
 
-sizePlayer = 1608
 Players = [] #List of Players
 
 #fill list with Player
 for x in range(NUMPLAYERS):
     Players.append(Player())
 
+#Player numbers 
 PLAYER1 = 0
 PLAYER2 = 1
 
@@ -146,6 +149,7 @@ def InitNumGenViruses():
         Players[PlayerNum].maxGenViruses = 23 * 4 + 4
     else:
         Players[PlayerNum].maxGenViruses = Players[PlayerNum].virusLevel * 4 + 4
+
     Players[PlayerNum].numGenViruses = 0
 
     print("PLAYER ",(PlayerNum+1)," InitNumGenViruses: maxGenViruses is set to ",Players[PlayerNum].maxGenViruses)
@@ -153,14 +157,10 @@ def InitNumGenViruses():
 
 def InitGenVirusData():
 	#Calculate total number of possible locations of viruses in a given level 
-	print("PLAYER ",(PlayerNum+1)," TOP ROW", levelMaxRow[Players[PlayerNum].virusLevel]) 
-	
-	if Players[PlayerNum].virusLevel >= MAXVIRUSLEVEL:
-		Players[PlayerNum].maxVirusLocs = levelMaxRow[MAXVIRUSLEVEL]*8
-	else:
-		Players[PlayerNum].maxVirusLocs = levelMaxRow[Players[PlayerNum].virusLevel]*8
+    print("PLAYER",(PlayerNum+1)," TOP ROW", levelMaxRow(Players[PlayerNum].virusLevel)) 
+    Players[PlayerNum].maxVirusLocs = levelMaxRow(Players[PlayerNum].virusLevel)*8
+    print("PLAYER ",(PlayerNum+1)," InitGenVirusData: maxVirusLocs is set to ",Players[PlayerNum].maxVirusLocs)
 
-	print("PLAYER ",(PlayerNum+1)," InitGenVirusData: maxVirusLocs is set to ",Players[PlayerNum].maxVirusLocs)
 
 #generates a random number from a given seed
 Seed = 0  
@@ -168,11 +168,7 @@ Seed = 0
 #Radomization Algorithm 
 def Rand():
 	global Seed 
-
 	Seed = (Seed * 5 + 28947) % 65536
-	# Seed2 = (Seed * 5 + 28947) & 0xffff
-	#print("Seed is " + str(Seed))
-
 
 #Get the virus position from the table 
 def SetVirusPos(playerNum):
@@ -182,18 +178,19 @@ def SetVirusPos(playerNum):
 #set nextVirusPosIndex to an unoccupied spot
 def SetUnoccupiedVirusPos():
     #if nextVirusPosIndex is not allowed, start scanning for unoccupied spot from index 0
-
-	spotFound = False
-	while(not spotFound):
-		Players[PlayerNum].nextVirusPosIndex += 1
+    spotFound = False
+    while(not spotFound):
+        Players[PlayerNum].nextVirusPosIndex += 1
 		#if nextVirusPosIndex is greater than maxVirusLocs make the index 0 
-		if Players[PlayerNum].nextVirusPosIndex >= (Players[PlayerNum].maxVirusLocs):
-			Players[PlayerNum].nextVirusPosIndex = 0
+        if Players[PlayerNum].nextVirusPosIndex >= (Players[PlayerNum].maxVirusLocs):
+            Players[PlayerNum].nextVirusPosIndex = 0
 		# if a pos index is not occupied, a location was found 
-		if not Players[PlayerNum].occupiedVirusPosTable[Players[PlayerNum].nextVirusPosIndex]:
-			spotFound = True 
-
-	SetVirusPos(PlayerNum)
+        # get bottle location and check if it's an empty location 
+        bottleLoc = NextVirusPosTable[Players[PlayerNum].nextVirusPosIndex]
+        if Players[PlayerNum].bottle[bottleLoc] == CELL_EMPTY:
+            spotFound = True
+    
+    SetVirusPos(PlayerNum)
 
 #Radomize the seed and find a random index 
 def GenNextVirusPosIndex():
@@ -221,8 +218,6 @@ def SetVirus():
 	Players[PlayerNum].bottle[Players[PlayerNum].nextVirusPos] = virusCell
 	Players[PlayerNum].setVirus = True
 	Players[PlayerNum].numGenViruses += 1
-	# also put the index in the occupied pos table 
-	Players[PlayerNum].occupiedVirusPosTable[Players[PlayerNum].nextVirusPosIndex] = True
 	
 	# Cycle to the next color 
 	Players[PlayerNum].nextVirusType += 1
@@ -231,50 +226,28 @@ def SetVirus():
 
 	#printBottle()
 
-#all directions that we have to check
-VIRUSCHECKDIR_UP = 0
-VIRUSCHECKDIR_DOWN = 1
-VIRUSCHECKDIR_LEFT = 2
-VIRUSCHECKDIR_RIGHT = 3
-VIRUSCHECKDIR_ALLVALID = 4
 
 
-#Temp = [0]*(BOTTLE_WIDTH - 2) * TOPVIRUSROW
+def checkNeighbor(virusPos): 
+    return (virusPos < 0 or #outside the bottle 
+        (virusPos >= len(Players[PlayerNum].bottle)) or #outside the bottle
+        Players[PlayerNum].bottle[virusPos] == CELL_EMPTY or 
+        Players[PlayerNum].bottle[virusPos] == CELL_WALL or 
+        cellVirusType(Players[PlayerNum].bottle[virusPos]) != Players[PlayerNum].nextVirusType) # is diff color
 
+
+#Check that no location 2 spaces away has the same color 
 def ValidVirusPos():
-	if Players[PlayerNum].bottle[Players[PlayerNum].nextVirusPos] == CELL_EMPTY:
-		direction = VIRUSCHECKDIR_UP
-		# Move two spaces in a given direction 
-		while True:
-			if direction == VIRUSCHECKDIR_UP:
-				virusPos = Players[PlayerNum].nextVirusPos + 20 
-			elif direction == VIRUSCHECKDIR_DOWN:
-				virusPos = Players[PlayerNum].nextVirusPos - 20
-			elif direction == VIRUSCHECKDIR_LEFT:
-				virusPos = Players[PlayerNum].nextVirusPos - 2
-			elif direction == VIRUSCHECKDIR_RIGHT:
-				virusPos = Players[PlayerNum].nextVirusPos + 2
-			else:
-                #WILL exit while loop
-				return True
-            
-			#check if position is outside of the bottle 
-			beyondEnd = (virusPos >= len(Players[PlayerNum].bottle))
-			#print("CHECK VIRUS POS")
-			
-			#If the virusPos is beyondEnd, empty, a wall, or a different color it is valid 
-			if (virusPos < 0 or 
-				beyondEnd or 
-                Players[PlayerNum].bottle[virusPos] == CELL_EMPTY or
-				Players[PlayerNum].bottle[virusPos] == CELL_WALL or 
-                cellVirusType(Players[PlayerNum].bottle[virusPos]) != Players[PlayerNum].nextVirusType):
-				direction += 1
-                #loop back and check other directions
-			else:
-				return False
-    #if this cell is not empty
-	else:
-		return False
+    if (Players[PlayerNum].bottle[Players[PlayerNum].nextVirusPos] == CELL_EMPTY):
+        if (checkNeighbor(Players[PlayerNum].nextVirusPos + 20) and #up
+            checkNeighbor(Players[PlayerNum].nextVirusPos - 20) and #down
+            checkNeighbor(Players[PlayerNum].nextVirusPos + 2) and #right
+            checkNeighbor(Players[PlayerNum].nextVirusPos - 2)): #left 
+            return True
+    
+    return False
+
+
 
 def GenVirus():
 	#print(Players[PlayerNum].nextVirusType)

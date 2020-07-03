@@ -29,18 +29,13 @@ typedef enum {
 
 // Size: 1
 typedef enum {
-	VIRUS_RED, // 0
-	VIRUS_YELLOW, // 1
-	VIRUS_BLUE, // 2
-	NUMVIRUSTYPES  // 3
+	VIRUS_RED,
+	VIRUS_YELLOW,
+	VIRUS_BLUE,
+	NUMVIRUSTYPES
 } VirusType;
 
-//translate CELL_REDVIRUS to VIRUS_RED, etc.
 #define CELLVIRUSTYPE(cell) ((VirusType)((cell & 3) - 1))
-//  101011xy
-//& 00000011
-//------------
-//  000000xy
 
 // Size: 1
 typedef enum {
@@ -59,7 +54,6 @@ typedef enum {
 uint8_t Temp[2];
 
 // Offset: 0x828234
-// Max row for given level
 uint8_t RandDivisors[MAXVIRUSLEVEL + 1] = {
 	// 0 ... 14
 	10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
@@ -72,7 +66,6 @@ uint8_t RandDivisors[MAXVIRUSLEVEL + 1] = {
 };
 
 // Offset: 0x828252
-// Where to put the next virus, all positions in memory where a virus can be stored
 size_t NextVirusPosTable[(BOTTLE_WIDTH - 2) * TOPVIRUSROW] = {
 	0x101, 0x102, 0x103, 0x104, 0x105, 0x106, 0x107, 0x108,
 	 0xF1,  0xF2,  0xF3,  0xF4,  0xF5,  0xF6,  0xF7,  0xF8,
@@ -100,7 +93,6 @@ PlayersMode CurrentPlayersMode;
 
 // Size: 0x500
 typedef struct {
-	//0x170 = 368
 	Cell bottle[0x170]; // Offset: 0x000
 	bool setVirus; // Offset: 0x20B
 	uint8_t virusLevel; // Offset: 0x240
@@ -134,7 +126,6 @@ Player Players[NUMPLAYERS];
 // Offset: 0x009E
 uint16_t Seed;
 
-// Highest number of viruses is 96
 void InitNumGenViruses() {
 	Players[PlayerNum].maxGenViruses = (
 		Players[PlayerNum].virusLevel >= 23 ?
@@ -146,59 +137,36 @@ void InitNumGenViruses() {
 
 // Offset: 0x829765
 void InitGenVirusData() {
-	// number of virus positions
 	Players[PlayerNum].randDivisor =
 		RandDivisors[
 			Players[PlayerNum].virusLevel >= MAXVIRUSLEVEL ?
 				MAXVIRUSLEVEL :
 				Players[PlayerNum].virusLevel
 		] << 3;
-	// go through every possible position of a virus and set it to false
+
 	Temp[0] = (BOTTLE_WIDTH - 2) * TOPVIRUSROW;
 	for (size_t i = 0; Temp[0] != 0; i++, Temp[0]--) {
 		Players[PlayerNum].occupiedVirusPosTable[i] = false;
 	}
-	// same as following for loop:
-	// for (size_t i = 0; i < Temp[0]; i++) {
-	// 	Players[PlayerNum].occupiedVirusPosTable[i] = false;
-	// }
 }
 
 // Offset: 0x808DBF
-//write python version
 void Rand() {
 	Seed = Seed * UINT16_C(5) + UINT16_C(0x7113);
 }
 
 // Offset: 0x829BDA
-/* set nextVirusPos to the corresponding memory location given PlayerNum
-similar to having 2 separate NextVirusPosTable for each PlayerNum
-where the distance of a given index in NextVirusPosTable (player1)
-to its corresponding index in NextVirusPosTable (player2) is
-sizeof(Player) ?
-*/
 void SetVirusPos(PlayerIndex playerNum) {
 	Players[playerNum].nextVirusPos = NextVirusPosTable[Players[playerNum].nextVirusPosIndex] + PlayerNum * sizeof(Player);
 }
-//Find first unoccupied position
+
 // Offset: 0x829BB7
 void SetUnoccupiedVirusPos() {
-	//set nextVirusPosIndex to an unoccupied spot
 	do {
 		if (++Players[PlayerNum].nextVirusPosIndex >= Players[PlayerNum].randDivisor) {
 			Players[PlayerNum].nextVirusPosIndex = 0u;
 		}
 	} while (Players[PlayerNum].occupiedVirusPosTable[Players[PlayerNum].nextVirusPosIndex]);
-
-	//same as:
-	//if nextVirusPosIndex is not allowed, start scanning for unoccupied spot from index 0
-	// if (Players[PlayerNum].nextVirusPosIndex >= Players[PlayerNum].randDivisor-1) {
-	// 	Players[PlayerNum].nextVirusPosIndex = 0u;
-	// }
-	// while (Players[PlayerNum].occupiedVirusPosTable[Players[PlayerNum].nextVirusPosIndex]) {
-	// 	Players[PlayerNum].nextVirusPosIndex++;
-	// }
-	//
 	SetVirusPos(PlayerNum);
 }
 
@@ -212,6 +180,10 @@ void GenNextVirusPosIndex() {
 void SetVirus() {
 	Cell virusCell;
 	switch (Players[PlayerNum].nextVirusType) {
+	default:
+		Players[PlayerNum].numViruses[VIRUS_RED]++;
+		virusCell = CELL_REDVIRUS;
+		break;
 
 	case VIRUS_YELLOW:
 		Players[PlayerNum].numViruses[VIRUS_YELLOW]++;
@@ -222,11 +194,6 @@ void SetVirus() {
 		Players[PlayerNum].numViruses[VIRUS_BLUE]++;
 		virusCell = CELL_BLUEVIRUS;
 		break;
-
-	default:
-		Players[PlayerNum].numViruses[VIRUS_RED]++;
-		virusCell = CELL_REDVIRUS;
-		break;
 	}
 
 	Players[PlayerNum].bottle[Players[PlayerNum].nextVirusPos] = virusCell;
@@ -234,10 +201,8 @@ void SetVirus() {
 	Players[PlayerNum].numGenViruses++;
 	Players[PlayerNum].occupiedVirusPosTable[Players[PlayerNum].nextVirusPosIndex] = true;
 	if (++Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES) {
-	//if (Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES-1)
 		Players[PlayerNum].nextVirusType = VIRUS_RED;
 	}
-
 }
 
 // Size: 1
@@ -279,7 +244,7 @@ bool ValidVirusPos() {
 
 			bool beyondEnd;
 			if (PlayerNum == PLAYER1) {
-				beyondEnd = (virusPos >= (BOTTLE_HEIGHT - 1) * MATRIX_WIDTH + PLAYER1 * sizeof(Player));
+				beyondEnd = virusPos >= (BOTTLE_HEIGHT - 1) * MATRIX_WIDTH + PLAYER1 * sizeof(Player);
 			}
 			else {
 				beyondEnd = virusPos >= (BOTTLE_HEIGHT - 1) * MATRIX_WIDTH + PLAYER2 * sizeof(Player);
@@ -287,18 +252,11 @@ bool ValidVirusPos() {
 
 			uint8_t column = virusPos & 0xF;
 			// virusPos indexes player 1's bottle or player 2's.
-			if (beyondEnd || column == 0u || column >= BOTTLE_WIDTH - 1u || Players->bottle[virusPos] == CELL_EMPTY
-				|| CELLVIRUSTYPE(Players->bottle[virusPos]) != Players[PlayerNum].nextVirusType) {
-			//same as:
-			//Q: why Players->bottle[virusPos]? what if PlayerNum = PLAYER2
-			// if (beyondEnd || column == 0u || column >= BOTTLE_WIDTH - 1u || Players[PlayerNum].bottle[virusPos] == CELL_EMPTY
-			// 			|| CELLVIRUSTYPE(Players[PlayerNum].bottle[virusPos]) != Players[PlayerNum].nextVirusType) {
+			if (beyondEnd || column == 0u || column >= BOTTLE_WIDTH - 1u || Players->bottle[virusPos] == CELL_EMPTY || CELLVIRUSTYPE(Players->bottle[virusPos]) != Players[PlayerNum].nextVirusType) {
 				Temp[0]++;
 				continue;
 			}
 			return false;
-
-
 		}
 	}
 	else {
@@ -321,12 +279,8 @@ void GenVirus() {
 	while (true) {
 		SetUnoccupiedVirusPos();
 		if (Players[PlayerNum].nextVirusPosIndex == Players[PlayerNum].lastVirusPosIndex) {
-			// if (++Players[PlayerNum].numVirusGenAttempts >= MAXVIRUSGENATTEMPTS) {
-			// 	Players[PlayerNum].maxGenViruses = Players[PlayerNum].numGenViruses;
-			// 	return;
-			// }
-			if (Players[PlayerNum].numVirusGenAttempts >= MAXVIRUSGENATTEMPTS-1) {
-				Players[PlayerNum].maxGenViruses = Players[PlayerNum].numGenViruses++;
+			if (++Players[PlayerNum].numVirusGenAttempts >= MAXVIRUSGENATTEMPTS) {
+				Players[PlayerNum].maxGenViruses = Players[PlayerNum].numGenViruses;
 				return;
 			}
 			else if (++Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES) {
@@ -355,9 +309,9 @@ int main() {
 		Players[PLAYER1].bottle[y * MATRIX_WIDTH + 0] = CELL_WALL;
 		Players[PLAYER1].bottle[y * MATRIX_WIDTH + BOTTLE_WIDTH - 1] = CELL_WALL;
 	}
-	Players[PLAYER1].virusLevel = 20;
+	Players[PLAYER1].virusLevel = 0;
 
-	Seed = 0x3400;
+	Seed = 0x074E;
 	CurrentPlayersMode = PLAYERSMODE_SINGLE;
 	InitNumGenViruses();
 	InitGenVirusData();
@@ -369,7 +323,6 @@ int main() {
 		// no-Rand-per-frame ROM hack.
 	}
 
-	//print bottle
 	for (int y = 0; y < BOTTLE_HEIGHT; y++) {
 		for (int x = 0; x < BOTTLE_WIDTH; x++) {
 			switch (Players[PLAYER1].bottle[y * MATRIX_WIDTH + x]) {
