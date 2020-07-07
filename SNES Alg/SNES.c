@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <inttypes.h>
-bool valid;
+
 // Size: 1
 typedef enum {
 	CELL_EMPTY = 0x00,
@@ -29,18 +29,13 @@ typedef enum {
 
 // Size: 1
 typedef enum {
-	VIRUS_RED, // 0
-	VIRUS_YELLOW, // 1
-	VIRUS_BLUE, // 2
-	NUMVIRUSTYPES  // 3
+	VIRUS_RED,
+	VIRUS_YELLOW,
+	VIRUS_BLUE,
+	NUMVIRUSTYPES
 } VirusType;
 
-//translate CELL_REDVIRUS to VIRUS_RED, etc.
 #define CELLVIRUSTYPE(cell) ((VirusType)((cell & 3) - 1))
-//  101011xy
-//& 00000011
-//------------
-//  000000xy
 
 // Size: 1
 typedef enum {
@@ -59,7 +54,6 @@ typedef enum {
 uint8_t Temp[2];
 
 // Offset: 0x828234
-// Max row for given level
 uint8_t RandDivisors[MAXVIRUSLEVEL + 1] = {
 	// 0 ... 14
 	10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
@@ -72,8 +66,6 @@ uint8_t RandDivisors[MAXVIRUSLEVEL + 1] = {
 };
 
 // Offset: 0x828252
-// Where to put the next virus, all positions in memory where a virus can be stored
-//8*13
 size_t NextVirusPosTable[(BOTTLE_WIDTH - 2) * TOPVIRUSROW] = {
 	0x101, 0x102, 0x103, 0x104, 0x105, 0x106, 0x107, 0x108,
 	 0xF1,  0xF2,  0xF3,  0xF4,  0xF5,  0xF6,  0xF7,  0xF8,
@@ -90,7 +82,6 @@ size_t NextVirusPosTable[(BOTTLE_WIDTH - 2) * TOPVIRUSROW] = {
 	 0x41,  0x42,  0x43,  0x44,  0x45,  0x46,  0x47,  0x48
 };
 
-
 // Size: 1
 typedef enum {
 	PLAYERSMODE_SINGLE,
@@ -102,7 +93,6 @@ PlayersMode CurrentPlayersMode;
 
 // Size: 0x500
 typedef struct {
-	//0x170 = 368: WhY?
 	Cell bottle[0x170]; // Offset: 0x000
 	bool setVirus; // Offset: 0x20B
 	uint8_t virusLevel; // Offset: 0x240
@@ -136,7 +126,6 @@ Player Players[NUMPLAYERS];
 // Offset: 0x009E
 uint16_t Seed;
 
-// Highest number of viruses is 96
 void InitNumGenViruses() {
 	Players[PlayerNum].maxGenViruses = (
 		Players[PlayerNum].virusLevel >= 23 ?
@@ -144,72 +133,40 @@ void InitNumGenViruses() {
 			Players[PlayerNum].virusLevel
 	) * 4 + 4;
 	Players[PlayerNum].numGenViruses = 0;
-	// printf("%d\n",Players[PlayerNum].maxGenViruses);
-	// 	printf("%d\n",Players[PlayerNum].numGenViruses);
 }
 
 // Offset: 0x829765
 void InitGenVirusData() {
-	// number of virus positions
 	Players[PlayerNum].randDivisor =
 		RandDivisors[
 			Players[PlayerNum].virusLevel >= MAXVIRUSLEVEL ?
 				MAXVIRUSLEVEL :
 				Players[PlayerNum].virusLevel
 		] << 3;
-	// go through every possible position of a virus and set it to false
+
 	Temp[0] = (BOTTLE_WIDTH - 2) * TOPVIRUSROW;
 	for (size_t i = 0; Temp[0] != 0; i++, Temp[0]--) {
 		Players[PlayerNum].occupiedVirusPosTable[i] = false;
 	}
-	// printf("%d\n",Players[PlayerNum].randDivisor);
-	// printf("%d\n",sizeof(Players[PlayerNum].occupiedVirusPosTable));
-	// same as following for loop:
-	// for (size_t i = 0; i < Temp[0]; i++) {
-	// 	Players[PlayerNum].occupiedVirusPosTable[i] = false;
-	// }
 }
 
 // Offset: 0x808DBF
-//write python version
 void Rand() {
 	Seed = Seed * UINT16_C(5) + UINT16_C(0x7113);
-	// printf("%d\n", Seed);
 }
 
 // Offset: 0x829BDA
-/* set nextVirusPos to the corresponding memory location given PlayerNum
-similar to having 2 separate NextVirusPosTable for each PlayerNum
-where the distance of a given index in NextVirusPosTable (player1)
-to its corresponding index in NextVirusPosTable (player2) is
-sizeof(Player) ?
-*/
 void SetVirusPos(PlayerIndex playerNum) {
-	//WHY:
 	Players[playerNum].nextVirusPos = NextVirusPosTable[Players[playerNum].nextVirusPosIndex] + PlayerNum * sizeof(Player);
-	// printf("NextVirusPos is %zx \n", Players[playerNum].nextVirusPos);
-	// printf("NextVirusPosINDEX is %d \n", Players[playerNum].nextVirusPosIndex);
-	// printf("\n");
 }
-//Find first unoccupied position
+
 // Offset: 0x829BB7
 void SetUnoccupiedVirusPos() {
-	//set nextVirusPosIndex to an unoccupied spot
 	do {
 		if (++Players[PlayerNum].nextVirusPosIndex >= Players[PlayerNum].randDivisor) {
 			Players[PlayerNum].nextVirusPosIndex = 0u;
 		}
 	} while (Players[PlayerNum].occupiedVirusPosTable[Players[PlayerNum].nextVirusPosIndex]);
-
-	//same as:
-	//if nextVirusPosIndex is not allowed, start scanning for unoccupied spot from index 0
-	// if (Players[PlayerNum].nextVirusPosIndex >= Players[PlayerNum].randDivisor-1) {
-	// 	Players[PlayerNum].nextVirusPosIndex = 0u;
-	// }
-	// while (Players[PlayerNum].occupiedVirusPosTable[Players[PlayerNum].nextVirusPosIndex]) {
-	// 	Players[PlayerNum].nextVirusPosIndex++;
-	// }
-	//
 	SetVirusPos(PlayerNum);
 }
 
@@ -217,14 +174,16 @@ void SetUnoccupiedVirusPos() {
 void GenNextVirusPosIndex() {
 	Rand();
 	Players[PlayerNum].nextVirusPosIndex = (Seed + 1u) % Players[PlayerNum].randDivisor;
-	// printf("%d\n",Players[PlayerNum].nextVirusPosIndex );
 }
 
 // Offset: 0x829C16
 void SetVirus() {
 	Cell virusCell;
-	// printf("%d\n",Players[PlayerNum].nextVirusType);
 	switch (Players[PlayerNum].nextVirusType) {
+	default:
+		Players[PlayerNum].numViruses[VIRUS_RED]++;
+		virusCell = CELL_REDVIRUS;
+		break;
 
 	case VIRUS_YELLOW:
 		Players[PlayerNum].numViruses[VIRUS_YELLOW]++;
@@ -235,11 +194,6 @@ void SetVirus() {
 		Players[PlayerNum].numViruses[VIRUS_BLUE]++;
 		virusCell = CELL_BLUEVIRUS;
 		break;
-
-	default:
-		Players[PlayerNum].numViruses[VIRUS_RED]++;
-		virusCell = CELL_REDVIRUS;
-		break;
 	}
 
 	Players[PlayerNum].bottle[Players[PlayerNum].nextVirusPos] = virusCell;
@@ -247,12 +201,8 @@ void SetVirus() {
 	Players[PlayerNum].numGenViruses++;
 	Players[PlayerNum].occupiedVirusPosTable[Players[PlayerNum].nextVirusPosIndex] = true;
 	if (++Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES) {
-	//if (Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES-1)
 		Players[PlayerNum].nextVirusType = VIRUS_RED;
 	}
-	// printf("VirusCell is %d\n", virusCell);
-
-
 }
 
 // Size: 1
@@ -273,22 +223,18 @@ bool ValidVirusPos() {
 			switch (Temp[0]) {
 			case VIRUSCHECKDIR_UP:
 				virusPos = Players[PlayerNum].nextVirusPos - MATRIX_WIDTH * 2u;
-				// printf("VirusPosUp is %d\n", virusPos);
 				break;
 
 			case VIRUSCHECKDIR_DOWN:
 				virusPos = Players[PlayerNum].nextVirusPos + MATRIX_WIDTH * 2u;
-				// printf("VirusPosDown is %d\n", virusPos);
 				break;
 
 			case VIRUSCHECKDIR_LEFT:
 				virusPos = Players[PlayerNum].nextVirusPos - 2u;
-				// printf("VirusPosLeft is %d\n", virusPos);
 				break;
 
 			case VIRUSCHECKDIR_RIGHT:
 				virusPos = Players[PlayerNum].nextVirusPos + 2u;
-				// printf("VirusPosRight is %d\n", virusPos);
 				break;
 
 			case VIRUSCHECKDIR_ALLVALID:
@@ -298,7 +244,7 @@ bool ValidVirusPos() {
 
 			bool beyondEnd;
 			if (PlayerNum == PLAYER1) {
-				beyondEnd = (virusPos >= (BOTTLE_HEIGHT - 1) * MATRIX_WIDTH + PLAYER1 * sizeof(Player));
+				beyondEnd = virusPos >= (BOTTLE_HEIGHT - 1) * MATRIX_WIDTH + PLAYER1 * sizeof(Player);
 			}
 			else {
 				beyondEnd = virusPos >= (BOTTLE_HEIGHT - 1) * MATRIX_WIDTH + PLAYER2 * sizeof(Player);
@@ -306,18 +252,11 @@ bool ValidVirusPos() {
 
 			uint8_t column = virusPos & 0xF;
 			// virusPos indexes player 1's bottle or player 2's.
-			if (beyondEnd || column == 0u || column >= BOTTLE_WIDTH - 1u || Players->bottle[virusPos] == CELL_EMPTY
-				|| CELLVIRUSTYPE(Players->bottle[virusPos]) != Players[PlayerNum].nextVirusType) {
-			//same as:
-			//Q: why Players->bottle[virusPos]? what if PlayerNum = PLAYER2
-			// if (beyondEnd || column == 0u || column >= BOTTLE_WIDTH - 1u || Players[PlayerNum].bottle[virusPos] == CELL_EMPTY
-			// 			|| CELLVIRUSTYPE(Players[PlayerNum].bottle[virusPos]) != Players[PlayerNum].nextVirusType) {
+			if (beyondEnd || column == 0u || column >= BOTTLE_WIDTH - 1u || Players->bottle[virusPos] == CELL_EMPTY || CELLVIRUSTYPE(Players->bottle[virusPos]) != Players[PlayerNum].nextVirusType) {
 				Temp[0]++;
 				continue;
 			}
 			return false;
-
-
 		}
 	}
 	else {
@@ -344,10 +283,6 @@ void GenVirus() {
 				Players[PlayerNum].maxGenViruses = Players[PlayerNum].numGenViruses;
 				return;
 			}
-			// if (Players[PlayerNum].numVirusGenAttempts >= MAXVIRUSGENATTEMPTS-1) {
-			// 	Players[PlayerNum].maxGenViruses = Players[PlayerNum].numGenViruses++;
-			// 	return;
-			// }
 			else if (++Players[PlayerNum].nextVirusType >= NUMVIRUSTYPES) {
 				Players[PlayerNum].nextVirusType = VIRUS_RED;
 			}
@@ -356,9 +291,7 @@ void GenVirus() {
 			if (Players[PlayerNum].lastVirusPosIndex == 0xFF) {
 				Players[PlayerNum].lastVirusPosIndex = Players[PlayerNum].nextVirusPosIndex;
 			}
-			valid = ValidVirusPos();
-			// printf("Valid %d \n",valid);
-			if (valid) {
+			if (ValidVirusPos()) {
 				Players[PlayerNum].numVirusGenAttempts = 0u;
 				SetVirus();
 				return;
@@ -367,7 +300,7 @@ void GenVirus() {
 	}
 }
 
-int main(int argc, char *argv[]) {
+int main() {
 	memset(Players, 0, sizeof(Players));
 	for (int x = 0; x < BOTTLE_WIDTH; x++) {
 		Players[PLAYER1].bottle[(BOTTLE_HEIGHT - 1) * MATRIX_WIDTH + x] = CELL_WALL;
@@ -376,17 +309,18 @@ int main(int argc, char *argv[]) {
 		Players[PLAYER1].bottle[y * MATRIX_WIDTH + 0] = CELL_WALL;
 		Players[PLAYER1].bottle[y * MATRIX_WIDTH + BOTTLE_WIDTH - 1] = CELL_WALL;
 	}
-	Players[PLAYER1].virusLevel = 21;
+	Players[PLAYER1].virusLevel = 23;
 
-	//take in Seed as one single arg
-	unsigned int temp;
-	sscanf(argv[1], "%x", &temp);
-	Seed = temp;
-
+	Seed = 0x28b8;
 	CurrentPlayersMode = PLAYERSMODE_SINGLE;
 	InitNumGenViruses();
 	InitGenVirusData();
 	for (size_t i = 0, maxGenViruses = Players[PLAYER1].maxGenViruses; i < maxGenViruses; i++) {
+		// if(Players[PlayerNum].virusLevel > 20){    //Only do this for later levels where its required
+    // for(int j = 0; j < 15; j++){    //Runs 15 times
+    //     Rand();
+    // }
+}
 		GenVirus();
 		// The original code would run RealRand a pseudorandom number of times
 		// (0 or greater) before the next call of GenVirus. Such calls of
@@ -394,21 +328,21 @@ int main(int argc, char *argv[]) {
 		// no-Rand-per-frame ROM hack.
 	}
 
-	int total = 0;
-	//print bottle
 	for (int y = 0; y < BOTTLE_HEIGHT; y++) {
 		for (int x = 0; x < BOTTLE_WIDTH; x++) {
 			switch (Players[PLAYER1].bottle[y * MATRIX_WIDTH + x]) {
 			case CELL_EMPTY: putchar('.'); break;
 			case CELL_WALL: putchar('#'); break;
-			case CELL_REDVIRUS: putchar('R'); total++; break;
-			case CELL_YELLOWVIRUS: putchar('Y'); total++; break;
-			case CELL_BLUEVIRUS: putchar('B'); total++; break;
+			case CELL_REDVIRUS: putchar('R'); break;
+			case CELL_YELLOWVIRUS: putchar('Y'); break;
+			case CELL_BLUEVIRUS: putchar('B'); break;
 			}
 		}
 		putchar('\n');
-		}
+	}
+	// printf("Seed is %d\n", Seed);
+	// printf("Total number of viruses %d\n",Players[PLAYER1].maxGenViruses);
+	// printf("The virus goal number is %d\n",	Players[PLAYER1].virusLevel*4+4);
 
-	printf("Total viruses in bottle %d\n", total);
 	return 0;
 }
