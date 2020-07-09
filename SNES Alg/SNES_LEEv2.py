@@ -49,8 +49,6 @@ def levelMaxRow(level):
         return 13 
 
 
-
-
 # Where to put the next virus, all positions in memory where a virus can be stored
 NextVirusPosTable = [
 	#BASE (CELL WALLS)
@@ -145,10 +143,8 @@ PlayerNum = 0
 #Calculate the number of viruses to generate 
 #Set the number of viruses generate to 0 
 def InitNumGenViruses():
-    if Players[PlayerNum].virusLevel >= 23:
-        Players[PlayerNum].maxGenViruses = 23 * 4 + 4
-    else:
-        Players[PlayerNum].maxGenViruses = Players[PlayerNum].virusLevel * 4 + 4
+
+    Players[PlayerNum].maxGenViruses = levelMaxRow(Players[PlayerNum].virusLevel)* 4 + 4
 
     Players[PlayerNum].numGenViruses = 0
 
