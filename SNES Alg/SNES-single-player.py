@@ -17,16 +17,16 @@ import sys
 import random
 
 # Create the 8 x 16 bottle to be filled
-# Call the initVirusData function 
+# Call the initVirusData function
 def initBottle(levelNum):
     global bottle, bottleWidth, bottleHeight
     bottleWidth = 8
     bottleHeight = 16
-    initVirusData(levelNum) 
-    #Create an array of arrays, each array in bottle is a row 
+    initVirusData(levelNum)
+    #Create an array of arrays, each array in bottle is a row
     bottle = [[None for i in range(bottleWidth)] for j in range(bottleHeight)]
 
-#Calculate virusGoal and virusRows based on a given level 
+#Calculate virusGoal and virusRows based on a given level
 def initVirusData(levelNum):
     global virusRows, virusGoal
 
@@ -43,8 +43,8 @@ def initVirusData(levelNum):
 #returns a random index into the bottle
 def randomIndex():
     global seed, virusRows, bottleWidth
-    seed = (seed * 5 + 28947) % 65536 #Randomization algorithm 
-    virusIndex = (seed + 1) % (virusRows*bottleWidth) #find a location within the possible virus positions 
+    seed = (seed * 5 + 28947) % 65536 #Randomization algorithm
+    virusIndex = (seed + 1) % (virusRows*bottleWidth) #find a location within the possible virus positions
     return virusIndex
 
 #given an index into the bottle, return row number
@@ -67,7 +67,7 @@ def validPos(virusIndex, virusColor):
     return ( checkNeighbor(row+2,col,virusColor) #right
         and checkNeighbor(row-2,col,virusColor) #left
         and checkNeighbor(row,col-2,virusColor) #down
-        and checkNeighbor(row,col+2,virusColor) ) #up 
+        and checkNeighbor(row,col+2,virusColor) ) #up
 
 #return True iff the neighbor cell does not have the same virus as virusColor
 def checkNeighbor(neighborRow, neighborCol, virusColor):
@@ -75,14 +75,15 @@ def checkNeighbor(neighborRow, neighborCol, virusColor):
     if (neighborRow >= bottleHeight or neighborRow < 0 or
         neighborCol >= bottleWidth or neighborCol < 0):
         return True
-    #if the neighbor is a different color return True 
+    #if the neighbor is a different color return True
     return bottle[neighborRow][neighborCol] != virusColor
 
 #given an index into the bottle, return an empty cell's index
 def findEmptyCell(virusIndex):
     foundEmpty = False
     #scan to the end of bottle and loop back to find an empty cell
-    #NOTE: this function assumes that the valid virus locations are never completely full. Otherwise, the loop would run forever. 
+    #NOTE: this function assumes that the valid virus locations are never completely full.
+    #Otherwise, the loop would run forever.
     while not foundEmpty:
         virusIndex=(virusIndex+1)%(virusRows*bottleWidth)
         #if a location in the bottle is unoccupied return the index
@@ -90,43 +91,44 @@ def findEmptyCell(virusIndex):
             foundEmpty = True
     return virusIndex
 
-#Place a virus in the bottle 
-def genVirus():
-    global virusColor, bottle, virusGoal
-    currentIndex = randomIndex() 
-    failed = 0 #keep track of the number of failed attempts 
+#Place a virus in the bottle
+def genVirus(virusRemain):
+    global virusColor, bottle
+    currentIndex = randomIndex()
+    failed = 0 #keep track of the number of failed attempts
     initialIndex = 0xFF
     while True:
         currentIndex = findEmptyCell(currentIndex)
-        #if we have scanned through bottle and couldn't find an empty spot
-
-        #I'm confused here bc there should always be an empty spot
-        #In the original code they did this if they couldn't find a valid pos
-
+        #If we have scanned through bottle (got back to the beginning positiion)
+        #and couldn't find a valid spot for this virus color,
+        #cycle to another virus color
+        #If there are no valid spots for any virus colors,
+        #give up and generate fewer viruses than expected
         if currentIndex == initialIndex:
             failed += 1
             if failed >= 3:
-                virusGoal = 0
-                return None
+                virusRemain = 0
+                return virusRemain
             virusColor=(virusColor+1)%3
         else:
              #keep track of the intialIndex (i.e. first empty spot we found)
             if (initialIndex == 0xFF):
                 initialIndex = currentIndex
             #we have found an empty spot at virusIndex
-
-            #What happens if there are no valid positions left? 
-
             if validPos(currentIndex,virusColor):
                 failed = 0
-                bottle[rowPos(currentIndex)][colPos(currentIndex)] = virusColor #place virus in the bottle 
-                virusColor=(virusColor+1)%3 #cycle to the next color 
-                virusGoal-=1
-                return None
+                bottle[rowPos(currentIndex)][colPos(currentIndex)] = virusColor #place virus in the bottle
+                virusColor=(virusColor+1)%3 #cycle to the next color
+                virusRemain -= 1
+                return virusRemain
 
 #Call genVirus over and over
 def fillBottle():
-    while virusGoal > 0:
+    global virusGoal
+    #the number of viruses we still have to generate to meet the virus goal
+    virusRemain = virusGoal
+    while virusRemain > 0:
+    # while virusGoal > 0:
         # nightmareci's comment:
         # The original code runs RealRand (a function that Rand calls) some random number of times
         # every frame.
@@ -135,9 +137,10 @@ def fillBottle():
         # The number of times RealRand is called is not governed by an explicit algorithm;
         # it just keeps running the randomizer after a frame has been updated,
         # so the number of times RealRand is run is proportional to how many CPU cycles remain after a frame update.
-        genVirus()
+        # genVirus()
+        virusRemain = genVirus(virusRemain)
 
-#Print the bottle out 
+#Print the bottle out
 def printBottle():
     global bottle
     res = ""
@@ -163,13 +166,15 @@ if __name__ == "__main__":
         print("the seed will be generated randomly")
         print("e.g. python SNES-single-player 21")
         exit()
-    #if a seed is not specified, a random seed is generated
+    #if only the level is specified
     elif len(sys.argv) == 2:
         level = int(sys.argv[1])
+        if (level > 29) or (level < 0):
+            print("level number must be from 0 to 29")
         seed = random.randint(0,65535)
     #if a level is not specified, level is set to 20
     else:
-        level = 20
+        level = int(sys.argv[1])
         if sys.argv[2][:2] != "0x":
             print("The seed is 16-bit and must be in heximal form (e.g. 0x3400, 0x28b8)")
             print("usage: python SNES-single-player.py <level> <hexSeed>")
