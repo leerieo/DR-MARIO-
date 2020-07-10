@@ -16,13 +16,17 @@
 import sys
 import random
 
+# Create the 8 x 16 bottle to be filled
+# Call the initVirusData function 
 def initBottle(levelNum):
     global bottle, bottleWidth, bottleHeight
     bottleWidth = 8
     bottleHeight = 16
-    initVirusData(levelNum)
+    initVirusData(levelNum) 
+    #Create an array of arrays, each array in bottle is a row 
     bottle = [[None for i in range(bottleWidth)] for j in range(bottleHeight)]
 
+#Calculate virusGoal and virusRows based on a given level 
 def initVirusData(levelNum):
     global virusRows, virusGoal
 
@@ -39,8 +43,8 @@ def initVirusData(levelNum):
 #returns a random index into the bottle
 def randomIndex():
     global seed, virusRows, bottleWidth
-    seed = (seed * 5 + 28947) % 65536
-    virusIndex = (seed + 1) % (virusRows*bottleWidth)
+    seed = (seed * 5 + 28947) % 65536 #Randomization algorithm 
+    virusIndex = (seed + 1) % (virusRows*bottleWidth) #find a location within the possible virus positions 
     return virusIndex
 
 #given an index into the bottle, return row number
@@ -54,42 +58,51 @@ def colPos(virusIndex):
     return virusIndex % bottleWidth
 
 #returns True iff a virus in virusColor can be placed into position (row, col)
+#no location 2 squares away (in the up, down, left, right direction) can have the same virusColor
 def validPos(virusIndex, virusColor):
     row = rowPos(virusIndex)
     col = colPos(virusIndex)
     #if the candidate cell is filled already
     if bottle[row][col] != None: return False
-    return ( checkNeighbor(row+2,col,virusColor)
-        and checkNeighbor(row-2,col,virusColor)
-        and checkNeighbor(row,col-2,virusColor)
-        and checkNeighbor(row,col+2,virusColor) )
+    return ( checkNeighbor(row+2,col,virusColor) #right
+        and checkNeighbor(row-2,col,virusColor) #left
+        and checkNeighbor(row,col-2,virusColor) #down
+        and checkNeighbor(row,col+2,virusColor) ) #up 
 
 #return True iff the neighbor cell does not have the same virus as virusColor
 def checkNeighbor(neighborRow, neighborCol, virusColor):
-    #if the neighbor is outside the bottle
+    #if the neighbor is outside the bottle return True
     if (neighborRow >= bottleHeight or neighborRow < 0 or
         neighborCol >= bottleWidth or neighborCol < 0):
         return True
+    #if the neighbor is a different color return True 
     return bottle[neighborRow][neighborCol] != virusColor
 
 #given an index into the bottle, return an empty cell's index
 def findEmptyCell(virusIndex):
     foundEmpty = False
     #scan to the end of bottle and loop back to find an empty cell
+    #NOTE: this function assumes that the valid virus locations are never completely full. Otherwise, the loop would run forever. 
     while not foundEmpty:
         virusIndex=(virusIndex+1)%(virusRows*bottleWidth)
+        #if a location in the bottle is unoccupied return the index
         if bottle[rowPos(virusIndex)][colPos(virusIndex)] == None:
             foundEmpty = True
     return virusIndex
 
+#Place a virus in the bottle 
 def genVirus():
     global virusColor, bottle, virusGoal
-    currentIndex = randomIndex()
-    failed = 0
+    currentIndex = randomIndex() 
+    failed = 0 #keep track of the number of failed attempts 
     initialIndex = 0xFF
     while True:
         currentIndex = findEmptyCell(currentIndex)
         #if we have scanned through bottle and couldn't find an empty spot
+
+        #I'm confused here bc there should always be an empty spot
+        #In the original code they did this if they couldn't find a valid pos
+
         if currentIndex == initialIndex:
             failed += 1
             if failed >= 3:
@@ -101,13 +114,17 @@ def genVirus():
             if (initialIndex == 0xFF):
                 initialIndex = currentIndex
             #we have found an empty spot at virusIndex
+
+            #What happens if there are no valid positions left? 
+
             if validPos(currentIndex,virusColor):
                 failed = 0
-                bottle[rowPos(currentIndex)][colPos(currentIndex)] = virusColor
-                virusColor=(virusColor+1)%3
+                bottle[rowPos(currentIndex)][colPos(currentIndex)] = virusColor #place virus in the bottle 
+                virusColor=(virusColor+1)%3 #cycle to the next color 
                 virusGoal-=1
                 return None
 
+#Call genVirus over and over
 def fillBottle():
     while virusGoal > 0:
         # nightmareci's comment:
@@ -120,6 +137,7 @@ def fillBottle():
         # so the number of times RealRand is run is proportional to how many CPU cycles remain after a frame update.
         genVirus()
 
+#Print the bottle out 
 def printBottle():
     global bottle
     res = ""
