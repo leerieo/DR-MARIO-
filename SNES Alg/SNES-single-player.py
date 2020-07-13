@@ -21,7 +21,7 @@ import random
 def initBottle(levelNum):
     global bottle, bottleWidth, bottleHeight
     bottleWidth = 8
-    bottleHeight = 16
+    bottleHeight = 17
     initVirusData(levelNum)
     #Create an array of arrays, each array in bottle is a row
     bottle = [[None for i in range(bottleWidth)] for j in range(bottleHeight)]
@@ -175,17 +175,19 @@ if __name__ == "__main__":
     #if a level is not specified, level is set to 20
     else:
         level = int(sys.argv[1])
-        if sys.argv[2][:2] != "0x":
-            print("The seed is 16-bit and must be in heximal form (e.g. 0x3400, 0x28b8)")
-            print("usage: python SNES-single-player.py <level> <hexSeed>")
-            print("e.g. python SNES-single-player 21 0x3400")
-            exit()
-        else:
-            s = sys.argv[2][2:]
-            seed = int(s, 16)
+        # if sys.argv[2][:2] != "0x":
+        #     print("The seed is 16-bit and must be in heximal form (e.g. 0x3400, 0x28b8)")
+        #     print("usage: python SNES-single-player.py <level> <hexSeed>")
+        #     print("e.g. python SNES-single-player 21 0x3400")
+        #     exit()
+        # else:
+        #     s = sys.argv[2][2
+        s = sys.argv[2]
+        seed = int(s, 16)
 
-    print("Seed (integer): "+ str(seed))
-    print("Level: "+ str(level))
+    #commented out so outputs can be compared
+    # print("Level: "+ str(level))
+    # print("Seed: "+ str(s))
     initBottle(level)
     virusColor = 0 #starts with red
     fillBottle()
