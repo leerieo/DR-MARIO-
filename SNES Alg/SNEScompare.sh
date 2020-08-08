@@ -10,7 +10,7 @@
 for i in in {0..66535}
 do
   seed=$(echo "obase=16; $i" | bc)
-  echo "seed: $seed"
+  #echo "seed: $seed"
 
   commandA="./main 21 $seed"
   commandB="python SNES-single-player.py 21 $seed"
